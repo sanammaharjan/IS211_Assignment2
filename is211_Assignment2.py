@@ -3,89 +3,94 @@
 """ Assignment 2 """
 
 import csv
-
 import logging
-
-import urllib2
-
 import datetime
-
+import urllib2
+from StringIO import StringIO
 import argparse
+import sys
+
+logging.basicConfig(filename='error.log', level=logging.DEBUG)
+# parsing url arguments from command line
+parser = argparse.ArgumentParser(description='Assignment 2 to paas csv url from command line')
+parser.add_argument('--url', action="store", dest="url", type=str)
+args = parser.parse_args()
+
+def downloadData(url):
+    """
+    It allows user to pass url value while calling function
+    :param url: link of weburl
+    :return: return a data from url
+    """
+    request = urllib2.Request(url)
+    response = urllib2.urlopen(request)
+    return response.read()
+
+
+# function open csv and read
+def processData(csvfile):
+    """
+    It process csv data and check the date format.
+    :param csvfile: name of the csv file
+    :return: data of csv into dictionary
+    """
+    reader = csv.reader(StringIO(csvfile))
+    next(reader)  # skipping header row
+    csvdict = {}  # creating empty dictionary
+    lineno = 1  # counter for line number
+    dformat = '%d/%m/%Y'
+    for row in reader:
+        id = row[0]
+        name = row[1]
+        birthday = row[2]
+        if id != 'id':
+            id = int(id)
+        try:
+            checkdate = datetime.datetime.strptime(birthday, dformat)
+            lineno += 1
+        except Exception, e:
+            logging.error('Error processing line #{} for id #{}'.format(lineno, id))
+        finally:
+            csvdict[id] = [(name, birthday)]
+    return csvdict
+
+def displayPerson(id, personData):
+    """
+    It displays the information of the user based on Id #
+    :param id: ID number
+    :param personData: dictioary which contains all data of birthday, name and ID
+    :return: Print ID, Name and birthday
+    """
+    try:
+        print 'Person # {} is {} with a birth of {}'.format(id, personData[id][0][0], personData[id][0][1])
+    except Exception, e:
+        logging.warning('User typed wrong id')
+        print 'No user found with that id'
+
 
 def main():
-    """ main function docstring"""
-    logging.basicConfig(file_name='error.log')
-    
-    def downloadData(url):
-        """function docstring"""
+    """
+    Main function to combine all function.
+    :return: Print User information
+    """
+    datasource = downloadData(args.url)  # parsing url value for command line
+    personData = processData(datasource) # processing CSV data using URL
 
-        urlname = urllib2.urlopen(url)
-        return urlname
+    if args.url:
+        datasource = downloadData(args.url)
+        personData = processData(datasource)
 
-    def processData(data):
-        """ function docstring """
-
-        with open (data, 'r') as file1:
-            csvdata = csv.reader(file1)
-            datastore = {}
-            dateformat = '%d/%m/%Y'
-
-            for row in csvdata:
-                if row[0] == 'id':
-                    continue
-            else:
-                try:
-                    row[2] = datetime.datetime.strptime(row[2], dateformat)
-
-                except ValueError:
-                    linenum = int(row[0]) + 1
-                    idname = int(row[0])
-                    log = logging.getlogger('Assignment 2')
-                    log.error('Error processing line #{} for ID # {}'.format(linenum, idname))
-
-                finally:
-                    datastore[int(row[0])] = [(row[1]), (row[2])]
-        return datastore
-
-    def displayPerson(id, personData):
-        """displayPerson Docstring """
-
+    while True:
         try:
-            output = 'Person #{id} is {name} with birthday of {date}'
-            print output.format(id = idname,
-                                name = personData[idname][0],
-                                date = persondData[id][1])
-        except KeyError:
-                print 'No person found with that ID'
-
-        url_parser = argparse.ArgumentParser()
-        url_parser.add_argument('--url', help='Url of CSV file')
-        args = url_parser.parse_args()
-        logging.basicConfig(filename='error.log', level=logging.ERROR)
-
-        if args.url:
-            csvData = downloadData(args.url)
-            personData = processData(csvData)
-            msg = 'Please enter an ID #. Enter 0 or a negative # to exit: '
-
-        while True:
-            try:
-                user_input = int(raw_input(msg))
-            except ValueError:
-                print 'Invalid Input. Please try again'
-                continue
-            if user_input > 0:
-                displayPerson(user_input, personData)
-            else:
-                print 'Thank you'
-                sys.exit()
+            input = int(raw_input('Note: Enter 0 or a negative # to exit. \n Please enter and ID # : '))
+        except ValueError:
+            print 'Invalid Input. Please try again'
+            continue
+        if input > 0:
+            displayPerson(input, personData)
         else:
-            print 'Please type --help for details'
+            print 'Thank you'
+            sys.exit()
 
-
-if __name__== '__main__':
+if __name__ == "__main__":
     main()
-                          
-                          
-    
-
